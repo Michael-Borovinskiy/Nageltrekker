@@ -38,18 +38,19 @@ object AnalysisChecks {
 
   def findNearestDates(df: DataFrame, columnDt: Column)(period: Period): Seq[String] = {
 
-    val periodCol = period match {
-      case Month => month(columnDt)
+    val periodCase = period match {
+      case Month => concat(month(columnDt),year(columnDt))
       case Quarter => date_trunc("quarter", columnDt)
       case Year => year(columnDt)
       case _ => columnDt
     }
 
     df.groupBy(
-      concat(periodCol, lit("_"), year(columnDt)).as("mnth")
+      periodCase.as("period")
     )
       .agg(min(columnDt).as(columnDt.toString()))
-      .drop("mnth")
+      .drop("period")
       .as[String](Encoders.STRING).collect()
   }
+
 }

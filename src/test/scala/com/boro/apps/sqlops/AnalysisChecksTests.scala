@@ -118,14 +118,14 @@ class AnalysisChecksTests extends munit.FunSuite {
 
     val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"))(Period.Month)
 
-    assertEquals(arr, Seq("2023-10-03", "2024-10-02", "2024-02-02", "2024-11-01", "2024-09-06"))
+    assertEquals(arr.sorted, Seq("2023-10-03", "2024-10-02", "2024-02-02", "2024-11-01", "2024-09-06").sorted)
   }
 
   test("find nearest to first quarters dates") {
 
     val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"))(Period.Quarter)
 
-    assertEquals(arr, Seq("2024-02-02", "2023-10-03", "2024-09-06", "2024-10-02"))
+    assertEquals(arr.sorted, Seq("2024-02-02", "2023-10-03", "2024-09-06", "2024-10-02").sorted)
   }
 
 
@@ -133,7 +133,7 @@ class AnalysisChecksTests extends munit.FunSuite {
 
     val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"))(Period.Year)
 
-    assertEquals(arr, Seq("2023-10-03", "2024-02-02"))
+    assertEquals(arr.sorted, Seq("2023-10-03", "2024-02-02").sorted)
   }
 
 
