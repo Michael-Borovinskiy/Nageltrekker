@@ -1,6 +1,8 @@
 package com.boro.apps.sqlops
 
+import com.boro.apps.sqlops.DateUtils.Period
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.col
 
 /**
  * @author Michael-Borovinskiy
@@ -52,6 +54,17 @@ class AnalysisChecksTests extends munit.FunSuite {
       |SELECT 6 NUM, 'EDWARD' NAME, 10 EXPERIENCE, 900000 SALARY
       |""".stripMargin)
 
+  val sqDt = spark.sql(
+    """
+      |SELECT 1 NUM, to_date("2023-10-03") gregor_dt UNION ALL
+      |SELECT 2 NUM, to_date("2024-02-05") gregor_dt  UNION ALL
+      |SELECT 4 NUM, to_date("2024-09-06") gregor_dt  UNION ALL
+      |SELECT 5 NUM, to_date("2024-10-15") gregor_dt  UNION ALL
+      |SELECT 6 NUM, to_date("2024-11-01") gregor_dt  UNION ALL
+      |SELECT 7 NUM, to_date("2024-10-02") gregor_dt  UNION ALL
+      |SELECT 8 NUM, to_date("2024-09-07") gregor_dt  UNION ALL
+      |SELECT 9 NUM, to_date("2024-02-02") gregor_dt
+      |""".stripMargin)
 
   test("countColumnValues check correct columns") {
 
@@ -76,6 +89,51 @@ class AnalysisChecksTests extends munit.FunSuite {
 
     assertEquals(df.columns.count(_.contains("df1")), 3)
     assertEquals(df.columns.count(_.contains("df2")), 3)
+  }
+
+
+  test("find exact count of months") {
+
+    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"))(Period.Month)
+    arr.foreach(println)
+    assertEquals(arr.size, 5)
+  }
+
+  test("find exact count of quarters") {
+
+    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"))(Period.Quarter)
+    arr.foreach(println)
+    assertEquals(arr.size, 4)
+  }
+
+  test("find exact count of years") {
+
+    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"))(Period.Year)
+    arr.foreach(println)
+    assertEquals(arr.size, 2)
+  }
+
+
+  test("find nearest to first month dates") {
+
+    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"))(Period.Month)
+
+    assertEquals(arr.sorted, Seq("2023-10-03", "2024-10-02", "2024-02-02", "2024-11-01", "2024-09-06").sorted)
+  }
+
+  test("find nearest to first quarters dates") {
+
+    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"))(Period.Quarter)
+
+    assertEquals(arr.sorted, Seq("2024-02-02", "2023-10-03", "2024-09-06", "2024-10-02").sorted)
+  }
+
+
+  test("find nearest to first year dates") {
+
+    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"))(Period.Year)
+
+    assertEquals(arr.sorted, Seq("2023-10-03", "2024-02-02").sorted)
   }
 
 

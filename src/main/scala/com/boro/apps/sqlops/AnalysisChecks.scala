@@ -1,5 +1,7 @@
 package com.boro.apps.sqlops
 
+import com.boro.apps.sqlops.DateUtils.Period
+import com.boro.apps.sqlops.DateUtils.Period.{Month, Quarter, Year}
 import com.boro.apps.sqlops.DfTransformer._
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
@@ -26,7 +28,6 @@ object AnalysisChecks {
       .toDF(namesCols: _*)
   }
 
-  // prepare DF
   def prepareDf(df1: DataFrame, df2: DataFrame, joinColNames: String*): DataFrame = {
 
     renameColsWithPrefSufWithExceptedCols(df1, "", "_", "df1")(joinColNames: _*)
@@ -34,4 +35,22 @@ object AnalysisChecks {
         renameColsWithPrefSufWithExceptedCols(df2, "", "_", "df2")(joinColNames: _*)
         , Seq(joinColNames: _*), "full")
   }
+
+  def findNearestDates(df: DataFrame, columnDt: Column)(period: Period): Seq[String] = {
+
+    val periodCase = period match {
+      case Month => concat(month(columnDt),year(columnDt))
+      case Quarter => date_trunc("quarter", columnDt)
+      case Year => year(columnDt)
+      case _ => columnDt
+    }
+
+    df.groupBy(
+      periodCase.as("period")
+    )
+      .agg(min(columnDt).as(columnDt.toString()))
+      .drop("period")
+      .as[String](Encoders.STRING).collect()
+  }
+
 }
