@@ -36,7 +36,29 @@ object AnalysisChecks {
         , Seq(joinColNames: _*), "full")
   }
 
-  def findNearestDates(df: DataFrame, columnDt: Column)(period: Period): Seq[String] = {
+  def checkEqualColumns(df: DataFrame):(DataFrame, Map[String,(Long, Long)])  = {
+
+   val col_df1 =  df.columns.filter(_.endsWith("df1")).sorted
+   val col_df2 =  df.columns.filter(_.endsWith("df2")).sorted
+
+   val arr =  col_df1.zip(col_df2)
+
+   val dfResult =  df.select(
+     arr.map(tuple => {
+       lit(col(tuple._1)).as(tuple._1)}) ++
+     arr.map(tuple => {
+         lit(col(tuple._2)).as(tuple._2)}) ++
+     arr.map(tuple => {
+       lit(col(tuple._1) === col(tuple._2)).as(tuple._1 + "_" + tuple._2)}):_*
+   )
+
+    dfResult.show(30, false) // --
+
+    (dfResult, Map("one" -> (1L,2L))) //TODO Map implement
+  }
+
+
+  def findNearestDates(df: DataFrame, columnDt: Column, period: Period): Seq[String] = {
 
     val periodCase = period match {
       case Month => concat(month(columnDt),year(columnDt))
