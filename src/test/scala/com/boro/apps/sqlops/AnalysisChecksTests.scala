@@ -78,23 +78,23 @@ class AnalysisChecksTests extends munit.FunSuite {
 
   test("prepareDf check join count columns") {
 
-    val df = AnalysisChecks.prepareDf(sq2, sq3, "NUM")
+    val df = AnalysisChecks.prepareDf(sq2, sq3, Seq("NUM"))
 
     assertEquals(df.columns.length, 7)
   }
 
   test("prepareDf check column_names") {
 
-    val df = AnalysisChecks.prepareDf(sq2, sq3, "NUM")
+    val df = AnalysisChecks.prepareDf(sq2, sq3, Seq("NUM"))
 
     assertEquals(df.columns.count(_.contains("df1")), 3)
     assertEquals(df.columns.count(_.contains("df2")), 3)
   }
 
 
-  test("TODO") { //TODO
+  test("TODO") {
 
-    val df = AnalysisChecks.prepareDf(sq2, sq3, "NUM")
+    val df = AnalysisChecks.prepareDf(sq2, sq3, Seq("NUM"))
     AnalysisChecks.checkEqualColumns(df)
 
   }

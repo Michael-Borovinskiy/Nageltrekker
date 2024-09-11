@@ -5,6 +5,9 @@ import com.boro.apps.sqlops.DateUtils.Period.{Month, Quarter, Year}
 import com.boro.apps.sqlops.DfTransformer._
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types.LongType
+
+import scala.collection.mutable.{Map => MutableMap}
 
 /**
  * @author Michael-Borovinskiy
@@ -28,7 +31,7 @@ object AnalysisChecks {
       .toDF(namesCols: _*)
   }
 
-  def prepareDf(df1: DataFrame, df2: DataFrame, joinColNames: String*): DataFrame = {
+  def prepareDf(df1: DataFrame, df2: DataFrame, joinColNames: Seq[String]): DataFrame = {
 
     renameColsWithPrefSufWithExceptedCols(df1, "", "_", "df1")(joinColNames: _*)
       .join(
@@ -36,12 +39,13 @@ object AnalysisChecks {
         , Seq(joinColNames: _*), "full")
   }
 
-  def checkEqualColumns(df: DataFrame):(DataFrame, Map[String,(Long, Long)])  = {
+  def checkEqualColumns(df: DataFrame):(DataFrame, MutableMap[String,(Long, Long)]) = {
 
    val col_df1 =  df.columns.filter(_.endsWith("df1")).sorted
    val col_df2 =  df.columns.filter(_.endsWith("df2")).sorted
-
    val arr =  col_df1.zip(col_df2)
+
+   val allRowsCnt = df.count
 
    val dfResult =  df.select(
      arr.map(tuple => {
@@ -49,12 +53,19 @@ object AnalysisChecks {
      arr.map(tuple => {
          lit(col(tuple._2)).as(tuple._2)}) ++
      arr.map(tuple => {
-       lit(col(tuple._1) === col(tuple._2)).as(tuple._1 + "_" + tuple._2)}):_*
+       lit(when(col(tuple._1) === col(tuple._2), 1)).as(tuple._1 + "=>-<=" + tuple._2)}):_*
    )
+    val aggrColumns = dfResult.columns diff col_df1 diff col_df2
 
-    dfResult.show(30, false) // --
+    var map = MutableMap.empty[String,(Long, Long)]
 
-    (dfResult, Map("one" -> (1L,2L))) //TODO Map implement
+    dfResult.select(
+      Seq(lit(allRowsCnt).cast(LongType).as("allRowsCnt")) ++
+      aggrColumns.map(column => sum(col(column)).as(column) ):_*
+    )
+      //.show(30, false) // TODO aggregate and collect toMap
+
+    (dfResult, map)
   }
 
 
