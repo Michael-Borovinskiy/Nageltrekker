@@ -1,7 +1,7 @@
 package com.boro.apps.sqlops
 
 import com.boro.apps.sqlops.DateUtils.Period
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions.col
 
 /**
@@ -54,6 +54,18 @@ class AnalysisChecksTests extends munit.FunSuite {
       |SELECT 6 NUM, 'EDWARD' NAME, 10 EXPERIENCE, 900000 SALARY
       |""".stripMargin)
 
+  val sq4 = sq2.as("sq2").join(sq3.as("sq3"), Seq("NUM"), "full")
+    .select(
+      col("sq2.NAME_STR").as("NAME_STR_df1"),
+      col("sq2.EXPERIENCE_STR").as("EXPERIENCE_STR_df1"),
+      col("sq2.SALARY").as("SALARY_df1"),
+      col("sq3.NAME").as("NAME_df2"),
+      col("sq3.EXPERIENCE").as("EXPERIENCE_df2"),
+      col("sq3.SALARY").as("SALARY_df2")
+    )
+
+
+
   val sqDt = spark.sql(
     """
       |SELECT 1 NUM, to_date("2023-10-03") gregor_dt UNION ALL
@@ -92,10 +104,15 @@ class AnalysisChecksTests extends munit.FunSuite {
   }
 
 
-  test("TODO") {
+  test("checkEqualColumns returns correct results") {
 
-    val df = AnalysisChecks.prepareDf(sq2, sq3, Seq("NUM"))
-    AnalysisChecks.checkEqualColumns(df)
+    val res: (DataFrame, Map[String, (Long, Long)]) =  AnalysisChecks.checkEqualColumns(sq4)
+
+    res._2.foreach(println)
+
+    assertEquals(res._1.count(), 6L)
+    assertEquals(res._2("EXPERIENCE_STR_df1=>-<=EXPERIENCE_df2")._1, 5L)
+    assertEquals(res._2("EXPERIENCE_STR_df1=>-<=EXPERIENCE_df2")._2, 83L)
 
   }
 

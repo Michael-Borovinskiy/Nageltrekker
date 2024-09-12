@@ -5,15 +5,11 @@ import com.boro.apps.sqlops.DateUtils.Period.{Month, Quarter, Year}
 import com.boro.apps.sqlops.DfTransformer._
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.LongType
-
-import scala.collection.mutable.{Map => MutableMap}
 
 /**
  * @author Michael-Borovinskiy
  *         02.09.2024
  */
-
 
 
 object AnalysisChecks {
@@ -39,31 +35,40 @@ object AnalysisChecks {
         , Seq(joinColNames: _*), "full")
   }
 
-  def checkEqualColumns(df: DataFrame):(DataFrame, MutableMap[String,(Long, Long)]) = {
+  def checkEqualColumns(df: DataFrame): (DataFrame, Map[String, (Long, Long)]) = {
 
-   val col_df1 =  df.columns.filter(_.endsWith("df1")).sorted
-   val col_df2 =  df.columns.filter(_.endsWith("df2")).sorted
-   val arr =  col_df1.zip(col_df2)
+    val col_df1 = df.columns.filter(_.endsWith("df1")).sorted
+    val col_df2 = df.columns.filter(_.endsWith("df2")).sorted
+    val arr = col_df1.zip(col_df2)
 
-   val allRowsCnt = df.count
+    val allRowsCnt: Long = df.count
 
-   val dfResult =  df.select(
-     arr.map(tuple => {
-       lit(col(tuple._1)).as(tuple._1)}) ++
-     arr.map(tuple => {
-         lit(col(tuple._2)).as(tuple._2)}) ++
-     arr.map(tuple => {
-       lit(when(col(tuple._1) === col(tuple._2), 1)).as(tuple._1 + "=>-<=" + tuple._2)}):_*
-   )
+    def putPercentage(value: Long): Long = {
+      value * 100L / allRowsCnt
+    }
+
+    val dfResult = df.select(
+      arr.map(tuple => {
+        lit(col(tuple._1)).as(tuple._1)
+      }) ++
+        arr.map(tuple => {
+          lit(col(tuple._2)).as(tuple._2)
+        }) ++
+        arr.map(tuple => {
+          lit(when(col(tuple._1) === col(tuple._2), 1)).as(tuple._1 + "=>-<=" + tuple._2)
+        }): _*
+    )
     val aggrColumns = dfResult.columns diff col_df1 diff col_df2
 
-    var map = MutableMap.empty[String,(Long, Long)]
-
-    dfResult.select(
-      Seq(lit(allRowsCnt).cast(LongType).as("allRowsCnt")) ++
-      aggrColumns.map(column => sum(col(column)).as(column) ):_*
+    val dfAggr = dfResult.select(
+      aggrColumns.map(column => sum(col(column)).as(column)): _*
     )
-      //.show(30, false) // TODO aggregate and collect toMap
+
+    val map: Map[String, (Long, Long)] = dfAggr.collect.map(r => Map(dfAggr.columns.zip(r.toSeq): _*))
+      .map(mapMutable =>
+        mapMutable.flatMap(mm => Map(mm._1 -> (mm._2.asInstanceOf[Long], putPercentage(mm._2.asInstanceOf[Long])))))
+      .apply(0)
+
 
     (dfResult, map)
   }
@@ -72,7 +77,7 @@ object AnalysisChecks {
   def findNearestDates(df: DataFrame, columnDt: Column, period: Period): Seq[String] = {
 
     val periodCase = period match {
-      case Month => concat(month(columnDt),year(columnDt))
+      case Month => concat(month(columnDt), year(columnDt))
       case Quarter => date_trunc("quarter", columnDt)
       case Year => year(columnDt)
       case _ => columnDt
