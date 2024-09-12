@@ -1,7 +1,7 @@
 package com.boro.apps.sqlops
 
 import com.boro.apps.sqlops.DateUtils.Period
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions.col
 
 /**
@@ -50,9 +50,21 @@ class AnalysisChecksTests extends munit.FunSuite {
       |SELECT 2 NUM, 'MARY' NAME, 8 EXPERIENCE, 350000 SALARY  UNION ALL
       |SELECT 3 NUM, 'NIK' NAME, 3 EXPERIENCE, 400000 SALARY  UNION ALL
       |SELECT 4 NUM, 'BORIS' NAME, 9 EXPERIENCE, 500000 SALARY  UNION ALL
-      |SELECT 5 NUM, 'WANE' NAME, 11 EXPERIENCE, 600000 SALARY  UNION ALL
+      |SELECT 5 NUM, 'WANE' NAME, 9 EXPERIENCE, 600000 SALARY  UNION ALL
       |SELECT 6 NUM, 'EDWARD' NAME, 10 EXPERIENCE, 900000 SALARY
       |""".stripMargin)
+
+  val sq4 = sq2.as("sq2").join(sq3.as("sq3"), Seq("NUM"), "full")
+    .select(
+      col("sq2.NAME_STR").as("NAME_STR_df1"),
+      col("sq2.EXPERIENCE_STR").as("EXPERIENCE_STR_df1"),
+      col("sq2.SALARY").as("SALARY_df1"),
+      col("sq3.NAME").as("NAME_df2"),
+      col("sq3.EXPERIENCE").as("EXPERIENCE_df2"),
+      col("sq3.SALARY").as("SALARY_df2")
+    )
+
+
 
   val sqDt = spark.sql(
     """
@@ -78,37 +90,50 @@ class AnalysisChecksTests extends munit.FunSuite {
 
   test("prepareDf check join count columns") {
 
-    val df = AnalysisChecks.prepareDf(sq2, sq3, "NUM")
+    val df = AnalysisChecks.prepareDf(sq2, sq3, Seq("NUM"))
 
     assertEquals(df.columns.length, 7)
   }
 
   test("prepareDf check column_names") {
 
-    val df = AnalysisChecks.prepareDf(sq2, sq3, "NUM")
+    val df = AnalysisChecks.prepareDf(sq2, sq3, Seq("NUM"))
 
     assertEquals(df.columns.count(_.contains("df1")), 3)
     assertEquals(df.columns.count(_.contains("df2")), 3)
   }
 
 
+  test("checkEqualColumns returns correct results") {
+
+    val res: (DataFrame, Map[String, (Long, Long)]) =  AnalysisChecks.checkEqualColumns(sq4)
+
+    res._2.foreach(println)
+
+    assertEquals(res._1.count(), 6L)
+    assertEquals(res._2("EXPERIENCE_STR_df1=>-<=EXPERIENCE_df2")._1, 5L)
+    assertEquals(res._2("EXPERIENCE_STR_df1=>-<=EXPERIENCE_df2")._2, 83L)
+
+  }
+
+
   test("find exact count of months") {
 
-    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"))(Period.Month)
+    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"),Period.Month)
     arr.foreach(println)
     assertEquals(arr.size, 5)
   }
 
   test("find exact count of quarters") {
 
-    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"))(Period.Quarter)
+    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"),Period.Quarter)
     arr.foreach(println)
     assertEquals(arr.size, 4)
   }
 
   test("find exact count of years") {
 
-    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"))(Period.Year)
+    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"),Period.Year)
     arr.foreach(println)
     assertEquals(arr.size, 2)
   }
@@ -116,14 +141,14 @@ class AnalysisChecksTests extends munit.FunSuite {
 
   test("find nearest to first month dates") {
 
-    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"))(Period.Month)
+    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"),Period.Month)
 
     assertEquals(arr.sorted, Seq("2023-10-03", "2024-10-02", "2024-02-02", "2024-11-01", "2024-09-06").sorted)
   }
 
   test("find nearest to first quarters dates") {
 
-    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"))(Period.Quarter)
+    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"),Period.Quarter)
 
     assertEquals(arr.sorted, Seq("2024-02-02", "2023-10-03", "2024-09-06", "2024-10-02").sorted)
   }
@@ -131,7 +156,7 @@ class AnalysisChecksTests extends munit.FunSuite {
 
   test("find nearest to first year dates") {
 
-    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"))(Period.Year)
+    val arr = AnalysisChecks.findNearestDates(sqDt, col("gregor_dt"),Period.Year)
 
     assertEquals(arr.sorted, Seq("2023-10-03", "2024-02-02").sorted)
   }

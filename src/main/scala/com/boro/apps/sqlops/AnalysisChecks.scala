@@ -12,7 +12,6 @@ import org.apache.spark.sql.functions._
  */
 
 
-
 object AnalysisChecks {
 
   def difColumns(df: DataFrame, df2: DataFrame): Map[String, Seq[String]] = {
@@ -28,7 +27,7 @@ object AnalysisChecks {
       .toDF(namesCols: _*)
   }
 
-  def prepareDf(df1: DataFrame, df2: DataFrame, joinColNames: String*): DataFrame = {
+  def prepareDf(df1: DataFrame, df2: DataFrame, joinColNames: Seq[String]): DataFrame = {
 
     renameColsWithPrefSufWithExceptedCols(df1, "", "_", "df1")(joinColNames: _*)
       .join(
@@ -36,10 +35,49 @@ object AnalysisChecks {
         , Seq(joinColNames: _*), "full")
   }
 
-  def findNearestDates(df: DataFrame, columnDt: Column)(period: Period): Seq[String] = {
+  def checkEqualColumns(df: DataFrame): (DataFrame, Map[String, (Long, Long)]) = {
+
+    val col_df1 = df.columns.filter(_.endsWith("df1")).sorted
+    val col_df2 = df.columns.filter(_.endsWith("df2")).sorted
+    val arr = col_df1.zip(col_df2)
+
+    val allRowsCnt: Long = df.count
+
+    def putPercentage(value: Long): Long = {
+      value * 100L / allRowsCnt
+    }
+
+    val dfResult = df.select(
+      arr.map(tuple => {
+        lit(col(tuple._1)).as(tuple._1)
+      }) ++
+        arr.map(tuple => {
+          lit(col(tuple._2)).as(tuple._2)
+        }) ++
+        arr.map(tuple => {
+          lit(when(col(tuple._1) === col(tuple._2), 1)).as(tuple._1 + "=>-<=" + tuple._2)
+        }): _*
+    )
+    val aggrColumns = dfResult.columns diff col_df1 diff col_df2
+
+    val dfAggr = dfResult.select(
+      aggrColumns.map(column => sum(col(column)).as(column)): _*
+    )
+
+    val map: Map[String, (Long, Long)] = dfAggr.collect.map(r => Map(dfAggr.columns.zip(r.toSeq): _*))
+      .map(mapMutable =>
+        mapMutable.flatMap(mm => Map(mm._1 -> (mm._2.asInstanceOf[Long], putPercentage(mm._2.asInstanceOf[Long])))))
+      .apply(0)
+
+
+    (dfResult, map)
+  }
+
+
+  def findNearestDates(df: DataFrame, columnDt: Column, period: Period): Seq[String] = {
 
     val periodCase = period match {
-      case Month => concat(month(columnDt),year(columnDt))
+      case Month => concat(month(columnDt), year(columnDt))
       case Quarter => date_trunc("quarter", columnDt)
       case Year => year(columnDt)
       case _ => columnDt
