@@ -64,7 +64,13 @@ class AnalysisChecksTests extends munit.FunSuite {
       col("sq3.SALARY").as("SALARY_df2")
     )
 
-
+  val sq4difCntCols = sq2.as("sq2").join(sq3.as("sq3"), Seq("NUM"), "full")
+    .select(
+      col("sq2.NAME_STR").as("NAME_STR_df1"),
+      col("sq2.EXPERIENCE_STR").as("EXPERIENCE_STR_df1"),
+      col("sq2.SALARY").as("SALARY_df1"),
+      col("sq3.EXPERIENCE").as("EXPERIENCE_df2")
+    )
 
   val sqDt = spark.sql(
     """
@@ -115,6 +121,18 @@ class AnalysisChecksTests extends munit.FunSuite {
     assertEquals(res._2("EXPERIENCE_STR_df1=>-<=EXPERIENCE_df2")._2, 83L)
 
   }
+
+  test("checkEqualColumns in different count columns dataframes") {
+
+    val res: (DataFrame, Map[String, (Long, Long)]) = AnalysisChecks.checkEqualColumns(sq4difCntCols)
+
+    res._1.show(false)
+    res._2.foreach(println)
+
+    assertEquals(res._1.columns.length, 3)
+    assertEquals(res._2.keys.size, 1)
+  }
+
 
 
   test("find exact count of months") {
