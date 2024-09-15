@@ -21,7 +21,7 @@ class AnalysisChecksTests extends munit.FunSuite {
   /**
    * Test DataFrames
    */
-  val sq = spark.sql(
+  val sq: DataFrame = spark.sql(
     """
       |SELECT 1 NUM, 'ANDREW' NAME, 10 EXPERIENCE, 900000 SALARY, 'ENGLAND' COUNTRY UNION ALL
       |SELECT 2 NUM, 'MARY' NAME, 9 HEIGHT, 350000 SALARY, 'USA' COUNTRY  UNION ALL
@@ -34,7 +34,7 @@ class AnalysisChecksTests extends munit.FunSuite {
       |SELECT 9 NUM, 'EDWARD' NAME, 10 HEIGHT, 900000 SALARY, 'USA' COUNTRY
       |""".stripMargin)
 
-  val sq2 = spark.sql(
+  val sq2: DataFrame = spark.sql(
     """
       |SELECT 1 NUM, 'ANDREW' NAME_STR, 10 EXPERIENCE_STR, 900000 SALARY UNION ALL
       |SELECT 2 NUM, 'MARY' NAME_STR, 8 EXPERIENCE_STR, 350000 SALARY  UNION ALL
@@ -44,7 +44,7 @@ class AnalysisChecksTests extends munit.FunSuite {
       |SELECT 6 NUM, 'EDWARD' NAME_STR, 10 EXPERIENCE_STR, 900000 SALARY
       |""".stripMargin)
 
-  val sq3 = spark.sql(
+  val sq3: DataFrame = spark.sql(
     """
       |SELECT 1 NUM, 'ANDREW' NAME, 10 EXPERIENCE, 900000 SALARY UNION ALL
       |SELECT 2 NUM, 'MARY' NAME, 8 EXPERIENCE, 350000 SALARY  UNION ALL
@@ -54,19 +54,40 @@ class AnalysisChecksTests extends munit.FunSuite {
       |SELECT 6 NUM, 'EDWARD' NAME, 10 EXPERIENCE, 900000 SALARY
       |""".stripMargin)
 
-  val sq4 = sq2.as("sq2").join(sq3.as("sq3"), Seq("NUM"), "full")
+  val sq4: DataFrame = sq2.as("sq2").join(sq3.as("sq3"), Seq("NUM"), "full")
     .select(
-      col("sq2.NAME_STR").as("NAME_STR_df1"),
-      col("sq2.EXPERIENCE_STR").as("EXPERIENCE_STR_df1"),
+      col("sq2.NAME_STR").as("NAME_df1"),
+      col("sq2.EXPERIENCE_STR").as("EXPERIENCE_df1"),
       col("sq2.SALARY").as("SALARY_df1"),
       col("sq3.NAME").as("NAME_df2"),
       col("sq3.EXPERIENCE").as("EXPERIENCE_df2"),
       col("sq3.SALARY").as("SALARY_df2")
     )
 
+  val sq4difCntCols: DataFrame = sq2.as("sq2").join(sq3.as("sq3"), Seq("NUM"), "full")
+    .select(
+      col("sq2.NAME_STR").as("NAME_df1"),
+      col("sq2.EXPERIENCE_STR").as("EXPERIENCE_df1"),
+      col("sq2.SALARY").as("SALARY_df1"),
+      col("sq3.EXPERIENCE").as("EXPERIENCE_df2")
+    )
 
+  val sq4dif2CntCols: DataFrame = sq2.as("sq2").join(sq3.as("sq3"), Seq("NUM"), "full")
+    .select(
+      col("sq2.NAME_STR").as("NAME_df1"),
+      col("sq2.EXPERIENCE_STR").as("EXPERIENCE_df1"),
+      col("sq2.SALARY").as("SALARY_df1"),
+      col("sq3.SALARY").as("SALARY_df2")
+    )
 
-  val sqDt = spark.sql(
+  val sqNodifCntCols: DataFrame = sq2.as("sq2").join(sq3.as("sq3"), Seq("NUM"), "full")
+    .select(
+      col("sq2.NAME_STR").as("NAME_df1"),
+      col("sq2.EXPERIENCE_STR").as("EXPERIENCE_df1"),
+      col("sq2.SALARY").as("SALARY_df1")
+    )
+
+  val sqDt: DataFrame = spark.sql(
     """
       |SELECT 1 NUM, to_date("2023-10-03") gregor_dt UNION ALL
       |SELECT 2 NUM, to_date("2024-02-05") gregor_dt  UNION ALL
@@ -111,9 +132,43 @@ class AnalysisChecksTests extends munit.FunSuite {
     res._2.foreach(println)
 
     assertEquals(res._1.count(), 6L)
-    assertEquals(res._2("EXPERIENCE_STR_df1=>-<=EXPERIENCE_df2")._1, 5L)
-    assertEquals(res._2("EXPERIENCE_STR_df1=>-<=EXPERIENCE_df2")._2, 83L)
+    assertEquals(res._2("EXPERIENCE_df1=>-<=EXPERIENCE_df2")._1, 5L)
+    assertEquals(res._2("EXPERIENCE_df1=>-<=EXPERIENCE_df2")._2, 83L)
 
+  }
+
+  test("checkEqualColumns in different count columns dataframes") {
+
+    val res: (DataFrame, Map[String, (Long, Long)]) = AnalysisChecks.checkEqualColumns(sq4difCntCols)
+
+    res._1.show(false)
+    res._2.foreach(println)
+
+    assertEquals(res._1.columns.length, 3)
+    assertEquals(res._2.keys.size, 1)
+  }
+
+  test("checkEqualColumns in different count columns dataframes dif range") {
+
+    val res: (DataFrame, Map[String, (Long, Long)]) = AnalysisChecks.checkEqualColumns(sq4dif2CntCols)
+
+    res._1.show(false)
+    res._2.foreach(println)
+
+    assertEquals(res._1.columns.length, 3)
+    assertEquals(res._2.keys.size, 1)
+  }
+
+
+  test("checkEqualColumns no different count columns dataframes") {
+
+    val res: (DataFrame, Map[String, (Long, Long)]) = AnalysisChecks.checkEqualColumns(sqNodifCntCols)
+
+    res._1.show(false)
+    res._2.foreach(println)
+
+    assertEquals(res._1.columns.length, 0)
+    assertEquals(res._2.keys.size, 0)
   }
 
 
