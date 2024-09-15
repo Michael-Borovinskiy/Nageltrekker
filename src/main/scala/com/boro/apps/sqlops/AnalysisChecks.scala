@@ -37,9 +37,8 @@ object AnalysisChecks {
 
   def checkEqualColumns(df: DataFrame): (DataFrame, Map[String, (Long, Long)]) = {
 
-    val col_df1 = df.columns.filter(_.endsWith("df1")).sorted
-    val col_df2 = df.columns.filter(_.endsWith("df2")).sorted
-    val arr = col_df1.zip(col_df2)
+    val cols_inters: Array[String] = df.columns.filter(_.endsWith("df1")).map(_.dropRight(4)) intersect
+      df.columns.filter(_.endsWith("df2")).map(_.dropRight(4))
 
     val allRowsCnt: Long = df.count
 
@@ -48,25 +47,25 @@ object AnalysisChecks {
     }
 
     val dfResult = df.select(
-      arr.map(tuple => {
-        lit(col(tuple._1)).as(tuple._1)
-      }) ++
-        arr.map(tuple => {
-          lit(col(tuple._2)).as(tuple._2)
+      cols_inters.map(str => {
+        lit(col(str + "_df1")).as(str + "_df1")
         }) ++
-        arr.map(tuple => {
-          lit(when(col(tuple._1) === col(tuple._2), 1)).as(tuple._1 + "=>-<=" + tuple._2)
+        cols_inters.map(str => {
+          lit(col(str + "_df2")).as(str + "_df2")
+        }) ++
+        cols_inters.map(str => {
+          lit(when(col(str + "_df1") === col(str + "_df2"), 1)).as(str + "_df1" + "=>-<=" + str + "_df2")
         }): _*
     )
-    val aggrColumns = dfResult.columns diff col_df1 diff col_df2
+    val aggrColumns = dfResult.columns diff df.columns.filter(_.endsWith("df1")).sorted diff df.columns.filter(_.endsWith("df2")).sorted
 
     val dfAggr = dfResult.select(
       aggrColumns.map(column => sum(col(column)).as(column)): _*
     )
 
     val map: Map[String, (Long, Long)] = dfAggr.collect.map(r => Map(dfAggr.columns.zip(r.toSeq): _*))
-      .map(mapMutable =>
-        mapMutable.flatMap(mm => Map(mm._1 -> (mm._2.asInstanceOf[Long], putPercentage(mm._2.asInstanceOf[Long])))))
+      .map(maptoMap =>
+        maptoMap.flatMap(mm => Map(mm._1 -> (mm._2.asInstanceOf[Long], putPercentage(mm._2.asInstanceOf[Long])))))
       .apply(0)
 
 
