@@ -37,9 +37,7 @@ object AnalysisChecks {
 
   def checkEqualColumns(df: DataFrame): (DataFrame, Map[String, (Long, Long)]) = {
 
-    val cols_inters: Array[String] = df.columns.filter(_.endsWith("df1")).map(_.dropRight(4)) intersect
-      df.columns.filter(_.endsWith("df2")).map(_.dropRight(4))
-
+    val cols_inters = intersectColumns(df)
     val allRowsCnt: Long = df.count
 
     def putPercentage(value: Long): Long = {
@@ -70,6 +68,30 @@ object AnalysisChecks {
 
 
     (dfResult, map)
+  }
+
+  def checkEqualColumnTypes(spark: SparkSession, df: DataFrame): (DataFrame, Map[String, (String, String)]) = {
+
+    import spark.implicits._
+
+    val seqColTypes: Seq[(String, String)] = df.schema.map(stField => (stField.name, stField.dataType.toString))
+
+    val df1 = seqColTypes.filter(tuple => tuple._1.endsWith("df1")).map(tuple => (tuple._1.dropRight(4), tuple._2)).toDF("cols_df1", "data_type_df1")
+    val df2 = seqColTypes.filter(tuple => tuple._1.endsWith("df2")).map(tuple => (tuple._1.dropRight(4), tuple._2)).toDF("cols_df2", "data_type_df2")
+
+    val dfRes = df1.as("df1").join(df2.as("df2"), $"df1.cols_df1" === $"df2.cols_df2", "full")
+
+    val mapRes = dfRes.select(coalesce($"cols_df1", $"cols_df2").as("cols"), coalesce($"data_type_df1", lit("NaN")).as("data_type_df1"),
+      coalesce($"data_type_df2", lit("NaN")).as("data_type_df2")).collect
+      .flatMap(row => Map(row.getAs("cols").toString -> (row.getAs("data_type_df1").toString, row.getAs("data_type_df2").toString)))
+      .toMap
+
+    (dfRes, mapRes)
+  }
+
+  private def intersectColumns(df: DataFrame): Array[String] = {
+    df.columns.filter(_.endsWith("df1")).map(_.dropRight(4)) intersect
+      df.columns.filter(_.endsWith("df2")).map(_.dropRight(4))
   }
 
 

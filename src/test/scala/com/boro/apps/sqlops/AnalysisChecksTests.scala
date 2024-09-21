@@ -64,6 +64,16 @@ class AnalysisChecksTests extends munit.FunSuite {
       col("sq3.SALARY").as("SALARY_df2")
     )
 
+  val sq5: DataFrame = sq2.as("sq2").join(sq3.as("sq3"), Seq("NUM"), "full")
+    .select(
+      col("sq2.NAME_STR").as("NAME_STR_df1"),
+      col("sq2.EXPERIENCE_STR").as("EXPERIENCE_STR_df1"),
+      col("sq2.SALARY").as("SALARY_df1"),
+      col("sq3.NAME").as("NAME_df2"),
+      col("sq3.EXPERIENCE").as("EXPERIENCE_df2"),
+      col("sq3.SALARY").as("SALARY_df2")
+    )
+
   val sq4difCntCols: DataFrame = sq2.as("sq2").join(sq3.as("sq3"), Seq("NUM"), "full")
     .select(
       col("sq2.NAME_STR").as("NAME_df1"),
@@ -169,6 +179,28 @@ class AnalysisChecksTests extends munit.FunSuite {
 
     assertEquals(res._1.columns.length, 0)
     assertEquals(res._2.keys.size, 0)
+  }
+
+  test("checkEqualColumnTypes check count columns, key size in Map") {
+
+    val res: (DataFrame, Map[String, (String, String)]) = AnalysisChecks.checkEqualColumnTypes(spark, sq4)
+
+    res._1.show(false)
+
+    assertEquals(res._1.count(), 3L)
+    assertEquals(res._2.keys.size, 3)
+  }
+
+
+  test("checkEqualColumnTypes check count columns, key size in Map with different column naming") {
+
+    val res: (DataFrame, Map[String, (String, String)]) = AnalysisChecks.checkEqualColumnTypes(spark, sq5)
+
+    res._1.show(false)
+    res._2.foreach(println)
+
+    assertEquals(res._1.count(), 5L)
+    assertEquals(res._2.keys.size, 5)
   }
 
 
