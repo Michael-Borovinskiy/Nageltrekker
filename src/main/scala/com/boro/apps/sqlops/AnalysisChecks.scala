@@ -1,7 +1,7 @@
 package com.boro.apps.sqlops
 
-import com.boro.apps.sqlops.DateUtils.Period
-import com.boro.apps.sqlops.DateUtils.Period.{Month, Quarter, Year}
+import com.boro.apps.sqlops.DatesUtils.Period
+import com.boro.apps.sqlops.DatesUtils.Period.{Month, Quarter, Year}
 import com.boro.apps.sqlops.DfTransformer._
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
@@ -13,6 +13,14 @@ import org.apache.spark.sql.functions._
 
 
 object AnalysisChecks {
+
+  def checkCountRows(dfLeft: DataFrame, dfRight: DataFrame, seqCols: Seq[(String, String)]): Boolean = {
+
+    val exprJoinKeys: Column = expr(seqCols.map(tuple => s"dfLeft.${tuple._1.trim} = dfRight.${tuple._2.trim}").mkString(" AND "))
+    val dfAfterJoin = dfLeft.as("dfLeft").join(dfRight.as("dfRight"), exprJoinKeys, "full")
+
+    (dfLeft.count == dfRight.count) && (dfLeft.count == dfAfterJoin.count)
+  }
 
   def difColumns(df: DataFrame, df2: DataFrame): Map[String, Seq[String]] = {
     Map("leftNewCols" -> (df.columns diff df2.columns).toSeq,
@@ -70,7 +78,7 @@ object AnalysisChecks {
     (dfResult, map)
   }
 
-  def checkEqualColumnTypes(spark: SparkSession, df: DataFrame): (DataFrame, Map[String, (String, String)]) = {
+  def checkEqualColumnTypes(spark: SparkSession, df: DataFrame): CheckData = {
 
     import spark.implicits._
 
@@ -86,7 +94,7 @@ object AnalysisChecks {
       .flatMap(row => Map(row.getAs("cols").toString -> (row.getAs("data_type_df1").toString, row.getAs("data_type_df2").toString)))
       .toMap
 
-    (dfRes, mapRes)
+    CheckData(dfRes, mapRes)
   }
 
   private def intersectColumns(df: DataFrame): Array[String] = {
