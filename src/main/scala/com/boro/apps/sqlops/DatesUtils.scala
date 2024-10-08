@@ -4,7 +4,7 @@ package com.boro.apps.sqlops
  * @author Michael-Borovinskiy
  *         09.09.2024
  */
-object DateUtils {
+object DatesUtils {
   abstract class Period(val name: String)
 
   object Period {

@@ -1,6 +1,6 @@
 package com.boro.apps.sqlops
 
-import com.boro.apps.sqlops.DateUtils.Period
+import com.boro.apps.sqlops.DatesUtils.Period
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions.col
 
@@ -109,6 +109,18 @@ class AnalysisChecksTests extends munit.FunSuite {
       |SELECT 9 NUM, to_date("2024-02-02") gregor_dt
       |""".stripMargin)
 
+  test("checkCountRows gives unequal count for 2 DF, different count in src DF") {
+
+    val isEqualCount = AnalysisChecks.checkCountRows(sq, sq2, Seq(("NUM","NUM")))
+    assertNotEquals(isEqualCount, true)
+  }
+
+  test("checkCountRows gives equal count for 2 DF before and after join") {
+
+    val isEqualCount = AnalysisChecks.checkCountRows(sq, sq, Seq(("NUM", "NUM")))
+    assertEquals(isEqualCount, true)
+  }
+
   test("countColumnValues check correct columns") {
 
     val df = AnalysisChecks.countColumnValues(sq2)
@@ -183,24 +195,24 @@ class AnalysisChecksTests extends munit.FunSuite {
 
   test("checkEqualColumnTypes check count columns, key size in Map") {
 
-    val res: (DataFrame, Map[String, (String, String)]) = AnalysisChecks.checkEqualColumnTypes(spark, sq4)
+    val res: CheckData = AnalysisChecks.checkEqualColumnTypes(spark, sq4)
 
-    res._1.show(false)
+    res.df.show(false)
 
-    assertEquals(res._1.count(), 3L)
-    assertEquals(res._2.keys.size, 3)
+    assertEquals(res.df.count(), 3L)
+    assertEquals(res.mapResult.keys.size, 3)
   }
 
 
   test("checkEqualColumnTypes check count columns, key size in Map with different column naming") {
 
-    val res: (DataFrame, Map[String, (String, String)]) = AnalysisChecks.checkEqualColumnTypes(spark, sq5)
+    val res: CheckData = AnalysisChecks.checkEqualColumnTypes(spark, sq5)
 
-    res._1.show(false)
-    res._2.foreach(println)
+    res.df.show(false)
+    res.mapResult.foreach(println)
 
-    assertEquals(res._1.count(), 5L)
-    assertEquals(res._2.keys.size, 5)
+    assertEquals(res.df.count(), 5L)
+    assertEquals(res.mapResult.keys.size, 5)
   }
 
 
