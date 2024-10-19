@@ -4,6 +4,10 @@ package com.boro.apps.sqlops
  * @author Michael-Borovinskiy
  *         09.09.2024
  */
+
+/**
+ * The DatesUtils object contains classes and objects for proccessing with dates, used for implementation in methods for checks with dates
+ */
 object DatesUtils {
   abstract class Period(val name: String)
 
