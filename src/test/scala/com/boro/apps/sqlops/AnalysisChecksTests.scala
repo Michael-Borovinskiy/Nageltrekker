@@ -149,48 +149,37 @@ class AnalysisChecksTests extends munit.FunSuite {
 
   test("checkEqualColumns returns correct results") {
 
-    val res: (DataFrame, Map[String, (Long, Long)]) =  AnalysisChecks.checkEqualColumns(sq4)
+    val res: CheckData = AnalysisChecks.checkEqualColumns(sq4)
 
-    res._2.foreach(println)
-
-    assertEquals(res._1.count(), 6L)
-    assertEquals(res._2("EXPERIENCE_df1=>-<=EXPERIENCE_df2")._1, 5L)
-    assertEquals(res._2("EXPERIENCE_df1=>-<=EXPERIENCE_df2")._2, 83L)
+    assertEquals(res.df.count(), 6L)
+    assertEquals(res.mapResult.asInstanceOf[Map[String, (Long, Long)]]("EXPERIENCE_df1=>-<=EXPERIENCE_df2")._1, 5L)
+    assertEquals(res.mapResult.asInstanceOf[Map[String, (Long, Long)]]("EXPERIENCE_df1=>-<=EXPERIENCE_df2")._2, 83L)
 
   }
 
   test("checkEqualColumns in different count columns dataframes") {
 
-    val res: (DataFrame, Map[String, (Long, Long)]) = AnalysisChecks.checkEqualColumns(sq4difCntCols)
+    val res: CheckData = AnalysisChecks.checkEqualColumns(sq4difCntCols)
 
-    res._1.show(false)
-    res._2.foreach(println)
-
-    assertEquals(res._1.columns.length, 3)
-    assertEquals(res._2.keys.size, 1)
+    assertEquals(res.df.columns.length, 3)
+    assertEquals(res.mapResult.keys.size, 1)
   }
 
   test("checkEqualColumns in different count columns dataframes dif range") {
 
-    val res: (DataFrame, Map[String, (Long, Long)]) = AnalysisChecks.checkEqualColumns(sq4dif2CntCols)
+    val res: CheckData = AnalysisChecks.checkEqualColumns(sq4dif2CntCols)
 
-    res._1.show(false)
-    res._2.foreach(println)
-
-    assertEquals(res._1.columns.length, 3)
-    assertEquals(res._2.keys.size, 1)
+    assertEquals(res.df.columns.length, 3)
+    assertEquals(res.mapResult.keys.size, 1)
   }
 
 
   test("checkEqualColumns no different count columns dataframes") {
 
-    val res: (DataFrame, Map[String, (Long, Long)]) = AnalysisChecks.checkEqualColumns(sqNodifCntCols)
+    val res: CheckData = AnalysisChecks.checkEqualColumns(sqNodifCntCols)
 
-    res._1.show(false)
-    res._2.foreach(println)
-
-    assertEquals(res._1.columns.length, 0)
-    assertEquals(res._2.keys.size, 0)
+    assertEquals(res.df.columns.length, 0)
+    assertEquals(res.mapResult.keys.size, 0)
   }
 
   test("checkEqualColumnTypes check count columns, key size in Map") {

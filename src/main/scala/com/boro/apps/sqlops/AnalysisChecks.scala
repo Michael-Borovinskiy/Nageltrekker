@@ -14,6 +14,13 @@ import org.apache.spark.sql.functions._
 
 object AnalysisChecks {
 
+  /**
+   *
+   * @param dfLeft - spark.sql.DataFrame 1 for comparing
+   * @param dfRight - spark.sql.DataFrame 2 for comparing
+   * @param seqCols - join columns sequence of tuples with column names from (@param dfLeft, @param dfRight)
+   * @return Check (Boolean) of rows quantity equality for two comparable DataFrames and after its joined by @param seqCols
+   */
   def checkCountRows(dfLeft: DataFrame, dfRight: DataFrame, seqCols: Seq[(String, String)]): Boolean = {
 
     val exprJoinKeys: Column = expr(seqCols.map(tuple => s"dfLeft.${tuple._1.trim} = dfRight.${tuple._2.trim}").mkString(" AND "))
@@ -22,11 +29,22 @@ object AnalysisChecks {
     (dfLeft.count == dfRight.count) && (dfLeft.count == dfAfterJoin.count)
   }
 
-  def difColumns(df: DataFrame, df2: DataFrame): Map[String, Seq[String]] = {
-    Map("leftNewCols" -> (df.columns diff df2.columns).toSeq,
-      "rightNewCols" -> (df2.columns diff df.columns).toSeq)
+  /**
+   *
+   * @param dfLeft - spark.sql.DataFrame 1 for comparing
+   * @param dfRight - spark.sql.DataFrame 2 for comparing
+   * @return Map with sequences of new columns for each of comparable DataFrame
+   */
+  def difColumns(dfLeft: DataFrame, dfRight: DataFrame): Map[String, Seq[String]] = {
+    Map("leftNewCols" -> (dfLeft.columns diff dfRight.columns).toSeq,
+      "rightNewCols" -> (dfRight.columns diff dfLeft.columns).toSeq)
   }
 
+  /**
+   *
+   * @param df - spark.sql.DataFrame
+   * @return spark.sql.DataFrame with distinct count for each column in @param df
+   */
   def countColumnValues(df: DataFrame): DataFrame = {
     val namesCols = df.columns.map(colName => colName + "_sum")
 
@@ -35,15 +53,27 @@ object AnalysisChecks {
       .toDF(namesCols: _*)
   }
 
-  def prepareDf(df1: DataFrame, df2: DataFrame, joinColNames: Seq[String]): DataFrame = {
+  /**
+   *
+   * @param dfLeft - spark.sql.DataFrame 1 for comparing
+   * @param dfRight - spark.sql.DataFrame 2 for comparing
+   * @param joinColNames - join columns sequence of column names
+   * @return spark.sql.DataFrame after join of DataFrames with columns renaming
+   */
+  def prepareDf(dfLeft: DataFrame, dfRight: DataFrame, joinColNames: Seq[String]): DataFrame = {
 
-    renameColsWithPrefSufWithExceptedCols(df1, "", "_", "df1")(joinColNames: _*)
+    renameColsWithPrefSufWithExceptedCols(dfLeft, "", "_", "df1")(joinColNames: _*)
       .join(
-        renameColsWithPrefSufWithExceptedCols(df2, "", "_", "df2")(joinColNames: _*)
+        renameColsWithPrefSufWithExceptedCols(dfRight, "", "_", "df2")(joinColNames: _*)
         , Seq(joinColNames: _*), "full")
   }
 
-  def checkEqualColumns(df: DataFrame): (DataFrame, Map[String, (Long, Long)]) = {
+  /**
+   *
+   * @param df - spark.sql.DataFrame
+   * @return CheckData with df: DataFrame with calculation of equal column and percentage of equal values in each column, mapResult: Map with results of calculation
+   */
+  def checkEqualColumns(df: DataFrame): CheckData = {
 
     val cols_inters = intersectColumns(df)
     val allRowsCnt: Long = df.count
@@ -75,9 +105,15 @@ object AnalysisChecks {
       .apply(0)
 
 
-    (dfResult, map)
+    CheckData(dfResult, map)
   }
 
+  /**
+   *
+   * @param spark - SparkSession
+   * @param df - spark.sql.DataFrame
+   * @return CheckData with df: DataFrame with calculation of equal column types from df.schema, mapResult: Map with results of calculation
+   */
   def checkEqualColumnTypes(spark: SparkSession, df: DataFrame): CheckData = {
 
     import spark.implicits._
@@ -97,12 +133,22 @@ object AnalysisChecks {
     CheckData(dfRes, mapRes)
   }
 
+  /**
+   * @return intersection of column names in Dataframe. Used in intermediate level of calculations
+   */
   private def intersectColumns(df: DataFrame): Array[String] = {
     df.columns.filter(_.endsWith("df1")).map(_.dropRight(4)) intersect
       df.columns.filter(_.endsWith("df2")).map(_.dropRight(4))
   }
 
 
+  /**
+   *
+   * @param df - spark.sql.DataFrame
+   * @param columnDt - spark.sql.Column which is used for calculation
+   * @param period - sqlops.DatesUtils.Period for defining period constraint
+   * @return sequence of dates (type: string) defined in @param period
+   */
   def findNearestDates(df: DataFrame, columnDt: Column, period: Period): Seq[String] = {
 
     val periodCase = period match {
