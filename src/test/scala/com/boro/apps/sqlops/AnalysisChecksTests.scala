@@ -24,21 +24,21 @@ class AnalysisChecksTests extends munit.FunSuite {
   val sq: DataFrame = spark.sql(
     """
       |SELECT 1 NUM, 'ANDREW' NAME, 10 EXPERIENCE, 900000 SALARY, 'ENGLAND' COUNTRY UNION ALL
-      |SELECT 2 NUM, 'MARY' NAME, 9 HEIGHT, 350000 SALARY, 'USA' COUNTRY  UNION ALL
-      |SELECT 3 NUM, 'ARNOLD' NAME, 3 HEIGHT, 400000 SALARY, 'ITALY' COUNTRY  UNION ALL
-      |SELECT 4 NUM, 'HELEN' NAME, 8 HEIGHT, 500000 SALARY, 'USA' COUNTRY  UNION ALL
-      |SELECT 5 NUM, 'WANE' NAME, 9 HEIGHT, 600000 SALARY, 'USA' COUNTRY  UNION ALL
-      |SELECT 6 NUM, 'EDWARD' NAME, 10 HEIGHT, 900000 SALARY, 'USA' COUNTRY UNION ALL
-      |SELECT 7 NUM, 'ANDREW' NAME, 10 HEIGHT, 900000 SALARY, 'FRANCE' COUNTRY UNION ALL
-      |SELECT 8 NUM, 'EDWARD' NAME, 10 HEIGHT, 900000 SALARY, 'FRANCE' COUNTRY UNION ALL
-      |SELECT 9 NUM, 'EDWARD' NAME, 10 HEIGHT, 900000 SALARY, 'USA' COUNTRY
+      |SELECT 2 NUM, 'MARY' NAME, 9 EXPERIENCE, 350000 SALARY, 'USA' COUNTRY  UNION ALL
+      |SELECT 3 NUM, 'ARNOLD' NAME, 3 EXPERIENCE, 400000 SALARY, 'ITALY' COUNTRY  UNION ALL
+      |SELECT 4 NUM, 'HELEN' NAME, 8 EXPERIENCE, 500000 SALARY, 'USA' COUNTRY  UNION ALL
+      |SELECT 5 NUM, 'WANE' NAME, 9 EXPERIENCE, 600000 SALARY, 'USA' COUNTRY  UNION ALL
+      |SELECT 6 NUM, 'EDWARD' NAME, 10 EXPERIENCE, 900000 SALARY, 'USA' COUNTRY UNION ALL
+      |SELECT 7 NUM, 'ANDREW' NAME, 10 EXPERIENCE, 900000 SALARY, 'FRANCE' COUNTRY UNION ALL
+      |SELECT 8 NUM, 'EDWARD' NAME, 10 EXPERIENCE, 900000 SALARY, 'FRANCE' COUNTRY UNION ALL
+      |SELECT 9 NUM, 'EDWARD' NAME, 10 EXPERIENCE, 900000 SALARY, 'USA' COUNTRY
       |""".stripMargin)
 
   val sq2: DataFrame = spark.sql(
     """
       |SELECT 1 NUM, 'ANDREW' NAME_STR, 10 EXPERIENCE_STR, 900000 SALARY UNION ALL
       |SELECT 2 NUM, 'MARY' NAME_STR, 8 EXPERIENCE_STR, 350000 SALARY  UNION ALL
-      |SELECT 3 NUM, 'NIK' NAME_STR, 3 EXPERIENCE_STR, 400000 SALARY  UNION ALL
+      |SELECT 3 NUM, 'NIK' NAME_STR, 3 EXPERIENCE_STR, 200000 SALARY  UNION ALL
       |SELECT 4 NUM, 'BORIS' NAME_STR, 9 EXPERIENCE_STR, 500000 SALARY  UNION ALL
       |SELECT 5 NUM, 'WANE' NAME_STR, 11 EXPERIENCE_STR, 600000 SALARY  UNION ALL
       |SELECT 6 NUM, 'EDWARD' NAME_STR, 10 EXPERIENCE_STR, 900000 SALARY
@@ -151,6 +151,8 @@ class AnalysisChecksTests extends munit.FunSuite {
 
     val res: CheckData = AnalysisChecks.checkEqualColumns(sq4)
 
+    res.df.show(false)
+
     assertEquals(res.df.count(), 6L)
     assertEquals(res.mapResult.asInstanceOf[Map[String, (Long, Long)]]("EXPERIENCE_df1=>-<=EXPERIENCE_df2")._1, 5L)
     assertEquals(res.mapResult.asInstanceOf[Map[String, (Long, Long)]]("EXPERIENCE_df1=>-<=EXPERIENCE_df2")._2, 83L)
@@ -180,6 +182,15 @@ class AnalysisChecksTests extends munit.FunSuite {
 
     assertEquals(res.df.columns.length, 0)
     assertEquals(res.mapResult.keys.size, 0)
+  }
+
+  test("takeDiff returns ....") {
+
+    val res: DataFrame = AnalysisChecks.takeDiff(sq2, sq3, Seq("NUM"))
+
+    res.show(false)
+
+    //TODO write tests
   }
 
   test("checkEqualColumnTypes check count columns, key size in Map") {

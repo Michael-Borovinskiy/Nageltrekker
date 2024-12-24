@@ -3,8 +3,8 @@ package com.boro.apps.sqlops
 import com.boro.apps.sqlops.DatesUtils.Period
 import com.boro.apps.sqlops.DatesUtils.Period.{Month, Quarter, Year}
 import com.boro.apps.sqlops.DfTransformer._
-import org.apache.spark.sql._
-import org.apache.spark.sql.functions._
+import org.apache.spark.sql.{DataFrame, _}
+import org.apache.spark.sql.functions.{col, _}
 
 /**
  * @author Michael-Borovinskiy
@@ -45,6 +45,24 @@ object AnalysisChecks {
 
   /**
    *
+   * @param dfLeft  - spark.sql.DataFrame 1 for comparing
+   * @param dfRight - spark.sql.DataFrame 2 for comparing
+   * @param joinColNames - join columns sequence of column names
+   * @return spark.sql.DataFrame with different column values for compared @param dfLeft and @param dfRight
+   */
+  def takeDiff(dfLeft: DataFrame, dfRight: DataFrame, joinColNames: Seq[String]): DataFrame = {
+    val preparedDf = prepareDf(dfLeft, dfRight, joinColNames)
+    val dfResult = mergeColumnsWithStat(preparedDf)
+
+    val filterCols = dfResult.columns.filter(_.contains("=>-<="))
+
+    dfResult.withColumn("checkDiff", when(filterCols.map(col).reduce(_+_).isNull, true).otherwise(false))
+    .filter(col("checkDiff"))      //TODO add excluded cols
+
+  }
+
+  /**
+   *
    * @param df - spark.sql.DataFrame
    * @return spark.sql.DataFrame with distinct count for each column in @param df
    */
@@ -78,27 +96,16 @@ object AnalysisChecks {
    */
   def checkEqualColumns(df: DataFrame): CheckData = {
 
-    val cols_inters = intersectColumns(df)
+    val df_proc = mergeColumnsWithStat(df)
     val allRowsCnt: Long = df.count
 
     def putPercentage(value: Long): Long = {
       value * 100L / allRowsCnt
     }
 
-    val dfResult = df.select(
-      cols_inters.map(str => {
-        lit(col(str + "_df1")).as(str + "_df1")
-        }) ++
-        cols_inters.map(str => {
-          lit(col(str + "_df2")).as(str + "_df2")
-        }) ++
-        cols_inters.map(str => {
-          lit(when(col(str + "_df1") === col(str + "_df2"), 1)).as(str + "_df1" + "=>-<=" + str + "_df2")
-        }): _*
-    )
-    val aggrColumns = dfResult.columns diff df.columns.filter(_.endsWith("df1")).sorted diff df.columns.filter(_.endsWith("df2")).sorted
+    val aggrColumns = df_proc.columns diff df.columns.filter(_.endsWith("df1")).sorted diff df.columns.filter(_.endsWith("df2")).sorted
 
-    val dfAggr = dfResult.select(
+    val dfAggr = df_proc.select(
       aggrColumns.map(column => sum(col(column)).as(column)): _*
     )
 
@@ -108,7 +115,25 @@ object AnalysisChecks {
       .apply(0)
 
 
-    CheckData(dfResult, map)
+    CheckData(df_proc, map)
+  }
+
+
+  private def mergeColumnsWithStat(df: DataFrame):DataFrame = {
+
+    val cols_inters = intersectColumns(df)
+
+    df.select(
+      cols_inters.map(str => {
+        lit(col(str + "_df1")).as(str + "_df1")
+      }) ++
+        cols_inters.map(str => {
+          lit(col(str + "_df2")).as(str + "_df2")
+        }) ++
+        cols_inters.map(str => {
+          lit(when(col(str + "_df1") === col(str + "_df2"), 1)).as(str + "_df1" + "=>-<=" + str + "_df2")
+        }): _*
+    )
   }
 
   /**
