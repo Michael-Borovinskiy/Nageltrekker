@@ -76,6 +76,7 @@ class AnalysisChecksTests extends munit.FunSuite {
 
   val sq4difCntCols: DataFrame = sq2.as("sq2").join(sq3.as("sq3"), Seq("NUM"), "full")
     .select(
+      col("NUM"),
       col("sq2.NAME_STR").as("NAME_df1"),
       col("sq2.EXPERIENCE_STR").as("EXPERIENCE_df1"),
       col("sq2.SALARY").as("SALARY_df1"),
@@ -84,6 +85,7 @@ class AnalysisChecksTests extends munit.FunSuite {
 
   val sq4dif2CntCols: DataFrame = sq2.as("sq2").join(sq3.as("sq3"), Seq("NUM"), "full")
     .select(
+      col("NUM"),
       col("sq2.NAME_STR").as("NAME_df1"),
       col("sq2.EXPERIENCE_STR").as("EXPERIENCE_df1"),
       col("sq2.SALARY").as("SALARY_df1"),
@@ -92,6 +94,7 @@ class AnalysisChecksTests extends munit.FunSuite {
 
   val sqNodifCntCols: DataFrame = sq2.as("sq2").join(sq3.as("sq3"), Seq("NUM"), "full")
     .select(
+      col("NUM"),
       col("sq2.NAME_STR").as("NAME_df1"),
       col("sq2.EXPERIENCE_STR").as("EXPERIENCE_df1"),
       col("sq2.SALARY").as("SALARY_df1")
@@ -163,7 +166,7 @@ class AnalysisChecksTests extends munit.FunSuite {
 
     val res: CheckData = AnalysisChecks.checkEqualColumns(sq4difCntCols)
 
-    assertEquals(res.df.columns.length, 3)
+    assertEquals(res.df.columns.length, 8)
     assertEquals(res.mapResult.keys.size, 1)
   }
 
@@ -171,7 +174,7 @@ class AnalysisChecksTests extends munit.FunSuite {
 
     val res: CheckData = AnalysisChecks.checkEqualColumns(sq4dif2CntCols)
 
-    assertEquals(res.df.columns.length, 3)
+    assertEquals(res.df.columns.length, 8)
     assertEquals(res.mapResult.keys.size, 1)
   }
 
@@ -180,17 +183,15 @@ class AnalysisChecksTests extends munit.FunSuite {
 
     val res: CheckData = AnalysisChecks.checkEqualColumns(sqNodifCntCols)
 
-    assertEquals(res.df.columns.length, 0)
+    assertEquals(res.df.columns.length, 4)
     assertEquals(res.mapResult.keys.size, 0)
   }
 
-  test("takeDiff returns ....") {
+  test("takeDiff returns exact count of rows") {
 
     val res: DataFrame = AnalysisChecks.takeDiff(sq2, sq3, Seq("NUM"))
 
-    res.show(false)
-
-    //TODO write tests
+    assertEquals(res.count, 1L)
   }
 
   test("checkEqualColumnTypes check count columns, key size in Map") {
