@@ -198,13 +198,13 @@ class AnalysisChecksTests extends munit.FunSuite {
     assertEquals(res.mapResult.keys.size, 0)
   }
 
-  test("takeDiffOnEqualColumnsByName returns exact count of rows with diff column values") {
+  test("takeDiffOnEqualColumnsByValue returns exact count of rows with diff column values") {
 
-    val res: DataFrame = AnalysisChecks.takeDiffOnEqualColumnsByName(sq2, sq3, Seq("NUM"))
+    val res: DataFrame = AnalysisChecks.takeDiffOnEqualColumnsByValue(sq2, sq3, Seq("NUM"))
 
     assertEquals(res.count, 1L)
 
-    val res2: DataFrame = AnalysisChecks.takeDiffOnEqualColumnsByName(sq2, sq6, Seq("NUM"))
+    val res2: DataFrame = AnalysisChecks.takeDiffOnEqualColumnsByValue(sq2, sq6, Seq("NUM"))
 
     assertEquals(res2.count, 3L)
 

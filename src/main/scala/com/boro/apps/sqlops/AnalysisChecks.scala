@@ -50,7 +50,7 @@ object AnalysisChecks {
    * @param joinColNames - join columns sequence of column names to join two dataframes before taking diff
    * @return spark.sql.DataFrame with different column values for compared @param dfLeft and @param dfRight
    */
-  def takeDiffOnEqualColumnsByName(dfLeft: DataFrame, dfRight: DataFrame, joinColNames: Seq[String]): DataFrame = {
+  def takeDiffOnEqualColumnsByValue(dfLeft: DataFrame, dfRight: DataFrame, joinColNames: Seq[String]): DataFrame = {
     val preparedDf = prepareDf(dfLeft, dfRight, joinColNames)
     val dfResult = mergeColumnsWithStat(preparedDf)
 
