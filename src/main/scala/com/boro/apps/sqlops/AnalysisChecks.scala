@@ -50,14 +50,14 @@ object AnalysisChecks {
    * @param joinColNames - join columns sequence of column names to join two dataframes before taking diff
    * @return spark.sql.DataFrame with different column values for compared @param dfLeft and @param dfRight
    */
-  def takeDiff(dfLeft: DataFrame, dfRight: DataFrame, joinColNames: Seq[String]): DataFrame = {
+  def takeDiffOnEqualColumnByName(dfLeft: DataFrame, dfRight: DataFrame, joinColNames: Seq[String]): DataFrame = {
     val preparedDf = prepareDf(dfLeft, dfRight, joinColNames)
     val dfResult = mergeColumnsWithStat(preparedDf)
 
     val filterCols = dfResult.columns.filter(_.contains("=>-<="))
 
     dfResult.withColumn("checkDiff", when(filterCols.map(col).reduce(_+_).isNull, true).otherwise(false))
-    .filter(col("checkDiff"))      //TODO add excluded cols
+    .filter(col("checkDiff"))
 
   }
 
@@ -117,7 +117,11 @@ object AnalysisChecks {
     CheckData(df_proc, map)
   }
 
-
+  /**
+   *
+   * @param df - spark.sql.DataFrame
+   * @return spark.sql.DataFrame with statistics after comparing values of Dataframe
+   */
   private def mergeColumnsWithStat(df: DataFrame):DataFrame = {
 
 

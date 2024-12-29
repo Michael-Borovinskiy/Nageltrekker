@@ -74,6 +74,17 @@ class AnalysisChecksTests extends munit.FunSuite {
       col("sq3.SALARY").as("SALARY_df2")
     )
 
+  val sq6: DataFrame = spark.sql(
+    """
+      |SELECT 1 NUM, 'ANDREW' NAME_STR, 10 EXPERIENCE_STR, 900000 SALARY UNION ALL
+      |SELECT 2 NUM, 'MARY' NAME_STR, 8 EXPERIENCE_STR, 350000 SALARY  UNION ALL
+      |SELECT 3 NUM, 'NIK' NAME_STR, 3 EXPERIENCE_STR, 400000 SALARY  UNION ALL
+      |SELECT 4 NUM, 'BORIS' NAME_STR, 9 EXPERIENCE_STR, 500000 SALARY  UNION ALL
+      |SELECT 5 NUM, 'WANE' NAME_STR, 100 EXPERIENCE_STR, 600000 SALARY  UNION ALL
+      |SELECT 6 NUM, 'EDWARD' NAME_STR, 14 EXPERIENCE_STR, 900000 SALARY
+      |""".stripMargin)
+
+
   val sq4difCntCols: DataFrame = sq2.as("sq2").join(sq3.as("sq3"), Seq("NUM"), "full")
     .select(
       col("NUM"),
@@ -187,11 +198,16 @@ class AnalysisChecksTests extends munit.FunSuite {
     assertEquals(res.mapResult.keys.size, 0)
   }
 
-  test("takeDiff returns exact count of rows") {
+  test("takeDiffOnEqualColumnByName returns exact count of rows with diff column values") {
 
-    val res: DataFrame = AnalysisChecks.takeDiff(sq2, sq3, Seq("NUM"))
+    val res: DataFrame = AnalysisChecks.takeDiffOnEqualColumnByName(sq2, sq3, Seq("NUM"))
 
     assertEquals(res.count, 1L)
+
+    val res2: DataFrame = AnalysisChecks.takeDiffOnEqualColumnByName(sq2, sq6, Seq("NUM"))
+
+    assertEquals(res2.count, 3L)
+
   }
 
   test("checkEqualColumnTypes check count columns, key size in Map") {
