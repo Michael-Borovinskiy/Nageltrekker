@@ -47,17 +47,17 @@ object AnalysisChecks {
    *
    * @param dfLeft  - spark.sql.DataFrame 1 for comparing
    * @param dfRight - spark.sql.DataFrame 2 for comparing
-   * @param joinColNames - join columns sequence of column names
+   * @param joinColNames - join columns sequence of column names to join two dataframes before taking diff
    * @return spark.sql.DataFrame with different column values for compared @param dfLeft and @param dfRight
    */
-  def takeDiff(dfLeft: DataFrame, dfRight: DataFrame, joinColNames: Seq[String]): DataFrame = {
+  def takeDiffOnEqualColumnsByValue(dfLeft: DataFrame, dfRight: DataFrame, joinColNames: Seq[String]): DataFrame = {
     val preparedDf = prepareDf(dfLeft, dfRight, joinColNames)
     val dfResult = mergeColumnsWithStat(preparedDf)
 
     val filterCols = dfResult.columns.filter(_.contains("=>-<="))
 
     dfResult.withColumn("checkDiff", when(filterCols.map(col).reduce(_+_).isNull, true).otherwise(false))
-    .filter(col("checkDiff"))      //TODO add excluded cols
+    .filter(col("checkDiff"))
 
   }
 
@@ -103,7 +103,7 @@ object AnalysisChecks {
       value * 100L / allRowsCnt
     }
 
-    val aggrColumns = df_proc.columns diff df.columns.filter(_.endsWith("df1")).sorted diff df.columns.filter(_.endsWith("df2")).sorted
+    val aggrColumns = df_proc.columns diff df.columns.filter(_.endsWith("df1")).sorted diff df.columns.filter(_.endsWith("df2")).sorted diff df.columns
 
     val dfAggr = df_proc.select(
       aggrColumns.map(column => sum(col(column)).as(column)): _*
@@ -114,16 +114,21 @@ object AnalysisChecks {
         maptoMap.flatMap(mm => Map(mm._1 -> (mm._2.asInstanceOf[Long], putPercentage(mm._2.asInstanceOf[Long])))))
       .apply(0)
 
-
     CheckData(df_proc, map)
   }
 
-
+  /**
+   *
+   * @param df - spark.sql.DataFrame
+   * @return spark.sql.DataFrame with statistics after comparing values of Dataframe
+   */
   private def mergeColumnsWithStat(df: DataFrame):DataFrame = {
 
-    val cols_inters = intersectColumns(df)
 
-    df.select(
+    val cols_inters = intersectColumns(df)
+    val dfCols = df.columns diff cols_inters
+
+      df.select( dfCols.map(col) ++
       cols_inters.map(str => {
         lit(col(str + "_df1")).as(str + "_df1")
       }) ++
