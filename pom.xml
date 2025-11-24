@@ -4,7 +4,7 @@
 
   <groupId>com.boro.apps</groupId>
   <artifactId>Nageltrekker</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>0.1.1</version>
   <packaging>jar</packaging>
 
   <name>Nageltrekker</name>
@@ -34,6 +34,26 @@
       <version>0.7.15</version>
       <scope>test</scope>
     </dependency>
-
   </dependencies>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <inherited>false</inherited>
+          <executions>
+            <execution>
+              <id>aggregate</id>
+              <goals>
+                <goal>aggregate-jar</goal>
+              </goals>
+              <phase>package</phase>
+            </execution>
+          </executions>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+
 </project>
